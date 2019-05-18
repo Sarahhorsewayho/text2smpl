@@ -10,15 +10,12 @@ def word2index(caption_tuples):
 	words = caption2words(caption_tuples)
 	word2idx = {}
 	idx2word = {}
-
 	vocab_size = len(words)
 
 	for i, word in enumerate(words):
 		word2idx[word] = i
 		idx2word[i] = word
-
 	return word2idx, idx2word
-
 
 def caption2words(caption_tuples):
 
@@ -28,7 +25,6 @@ def caption2words(caption_tuples):
 			words.append(word)
 	
 	words = set(words)
-
 	return words
 
 def gen_captions(caption_tuples):
@@ -38,14 +34,12 @@ def gen_captions(caption_tuples):
 
 	captions_post = []
 
-	for i in range(len(caption_tuples)):
-		
-		caption = []
-		
+	for i in range(len(caption_tuples)):		
+		caption = []	
 		for word in caption_tuples[i].split():
 			
 			if word in model:
-				caption.append(model[word])
+				caption.append(np.array(model[word]))
 			else:
 				caption.append([0] * VEC_DIM)
 
@@ -54,11 +48,9 @@ def gen_captions(caption_tuples):
 				caption.append([0] * VEC_DIM)
 		
 		captions_post.append(caption)
-
 	return captions_post
 
-def caption2list(caption_tuples):
-	
+def caption2list(caption_tuples):	
 	sentences = []
 
 	for i in range(len(caption_tuples)):
@@ -73,19 +65,15 @@ def word_to_vec(caption_tuples):
 
 	sentences = caption2list(caption_tuples)
 	model = Word2Vec(sentences, min_count=1, size=VEC_DIM)
-
 	model.save(cfg.DIR.word2vec_model_path)
 
 def load_word2vec_model():
 
 	model = Word2Vec.load(cfg.DIR.word2vec_model_path)
-
 	return model
 
 def compute_max_length(caption_tuples):
-
 	max_length = 0
-
 	for i in range(len(caption_tuples)):
 		cnt = 0
 		for word in caption_tuples[i].split():

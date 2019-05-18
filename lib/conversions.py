@@ -75,16 +75,16 @@ def rotmat_to_aar(latent_inp, kintree=None):
     assert len_input % 9 == 0, latent_inp.shape
     assert len(latent_inp.shape) == 1
 
-    latent_out = np.zeros((len_input/3,))
+    latent_out = np.zeros((len_input//3,))
 
     if kintree is not None:
         assert len_input == 216, "for this mode, we assume all joint angles are included"
-        rot_mats_abs = [[] for i in range(len_input/9)]
+        rot_mats_abs = [[] for i in range(len_input//9)]
         for i, m in enumerate(range(0,len_input,9)):
             rot_mats_abs[i] = latent_inp[m:m+9].reshape(3,3)
 
         latent_out[:3] = np.squeeze(cv2.Rodrigues(rot_mats_abs[0])[0])
-        for j in range(1, len_input/9):
+        for j in range(1, len_input//9):
             latent_out[j*3:(j+1)*3] = cv2.Rodrigues(rot_mats_abs[kintree[j]].T.dot(rot_mats_abs[j]))[0].flatten()
     else:
         for x, i in enumerate(range(0,len_input,9)):

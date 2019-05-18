@@ -3,6 +3,8 @@ import sys
 import importlib
 importlib.reload(sys)
 
+from lib.config import cfg
+
 import pickle
 import pandas as pd
 import tensorflow as tf
@@ -32,7 +34,7 @@ def extract_last_output(output):
 
         out_size = int(output.get_shape()[2])
 
-        index = tf.range(0, 32) * 16
+        index = tf.range(0, cfg.CONST.batch_size) * 16
         flat = tf.reshape(output, [-1, out_size])
 
         relevant = tf.gather(flat, index)

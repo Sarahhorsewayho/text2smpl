@@ -17,8 +17,8 @@ class Optimiser():
         self.losses = {}
         self.prepare_loss_ops()
 
-        #self.learning_rate = tf.Variable(0, trainable=False)
-        self.learning_rate = cfg.CONST.lr
+        self.learning_rate = tf.Variable(0, trainable=False)
+        #self.learning_rate = cfg.CONST.lr
         self.global_step = None
         self.max_steps = None
         self.train_op  = None
@@ -34,40 +34,32 @@ class Optimiser():
         return self.train_op
     
     def get_loss_op(self):
-        return self.loss_full
-
-    def get_loss_dict(self):
-        return self.losses                
+        return self.loss_full              
 
     def prepare_loss_ops(self):
         
-        z = self.predictions['latent']
+        z = self.predictions
         smplparams = self.targets
         
-        with tf.name_scope("generator_loss"):
-            # prepare placeholders for losses
-            gen_loss = tf.constant(0, tf.float64)
-            gen_loss_latent = tf.constant(0, tf.float64)
-            gen_loss_weights = tf.constant(0, tf.float64)
-            sqerr_latent = tf.zeros_like(z)
-            learning_rate = tf.constant(0, tf.float64)
+        gen_loss = tf.constant(0, tf.float64)
+        gen_loss_latent = tf.constant(0, tf.float64)
+        gen_loss_weights = tf.constant(0, tf.float64)
+        learning_rate = tf.constant(0, tf.float64)
 
-            mabserr  = lambda pred, gt: tf.abs(pred-gt)
+        mabserr  = lambda pred, gt: tf.abs(pred-gt)
 
-            gen_loss_latent = tf.reduce_mean(mabserr(z, smplparams))
-            gen_loss += 1.0 * gen_loss_latent
-
-        self.losses['gen_loss_latent'] = gen_loss_latent
+        gen_loss_latent = tf.reduce_mean(mabserr(z, smplparams))
+        self.loss_full = 1.0 * gen_loss_latent
 
     def create_optimiser(self):
 
-        #incr_global_step = tf.assign(self.global_step, self.global_step+1)
-        #self.learning_rate = tf.train.polynomial_decay(cfg.CONST.lr, self.global_step, self.max_steps, 
-        #                                                  end_learning_rate=0, power=0.9, cycle=False)
+        incr_global_step = tf.assign(self.global_step, self.global_step+1)
+        self.learning_rate = tf.train.polynomial_decay(cfg.CONST.lr, self.global_step, self.max_steps, 
+                                                          end_learning_rate=0, power=0.9, cycle=False)
         self.optimisers.append(tf.train.AdamOptimizer(learning_rate=self.learning_rate,
                                                                   beta1=cfg.CONST.beta1))
-        self.train_op = self.optimisers[0].minimize(self.loss_full)   
-        #self.train_op = tf.group(incr_global_step, train)
+        train = self.optimisers[0].minimize(self.loss_full) 
+        self.train_op = tf.group(incr_global_step, train)
         return
 
     def get_learning_rate(self):
