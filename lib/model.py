@@ -19,65 +19,43 @@ class Model():
 		self.apply_svd_to_rot_mats = cfg.CONST.use_svd
 
 		caption_embedding = text_encoder(self.inputs, is_training=is_training)
-		with tf.variable_scope("generator") as sf:
-			self.smpl_latent = parameter_decoder(caption_embedding)
-
-		#smpl_shape_pred, smpl_pose_pred = \
-		#	self.postprocess_smpl_params(10, 216, 24)
+		self.smpl_latent = caption_embedding
 		self.outputs['latent'] = self.smpl_latent
 		return
-
-	#def postprocess_smpl_params(self, n_shape, n_pose, n_joints):
-
-	#	smpl_shape_pred = self.smpl_latent[:,:n_shape] + self.latent_mean[:n_shape]
-	#	smpl_pose_pred = tf.reshape(self.smpl_latent[:,n_shape:n_shape+n_pose] + self.latent_mean[n_shape:n_shape+n_pose], [-1, n_joints, 3, 3])
-
-	#	if self.apply_svd_to_rot_mats:
-	#		w, u, v = tf.svd(smpl_pose_pred, full_matrices=True)
-	#		smpl_pose_pred = tf.matmul(u, tf.transpose(v, perm=[0,1,3,2]))
-
-	#	return smpl_shape_pred, smpl_pose_pred
 
 	def get_outputs(self):
 		return self.outputs['latent']
 
-
 def text_encoder(inputs, is_training):
 	embedding = inputs
-	print("look embedding:")
-	print(embedding)
-	length = cfg.CONST.batch_size
+	seq_length = compute_sequence_length(embedding)
 
 	with slim.arg_scope([slim.convolution, slim.fully_connected],
-						activation_fn=tf.nn.relu,
+						activation_fn=None,
 						weights_regularizer=slim.l2_regularizer(0.005)):
-	
-		net = slim.convolution(embedding, 128, 3, scope='conv1')
-		net = slim.convolution(net, 128, 3, scope='conv2')
-		net = tf.layers.batch_normalization(net, training=is_training)
-		net = slim.convolution(net, 256, 3, scope='conv3')
-		net = slim.convolution(net, 256, 3, scope='conv4') 
 
-		net = tf.layers.batch_normalization(net, training=is_training)
-
-		rnn_cell = tf.contrib.rnn.GRUCell(num_units=256)
+		net = embedding
+		rnn_cell = tf.contrib.rnn.GRUCell(num_units=10)
 
 		net=tf.cast(net, tf.float64)
 		outputs, final_state = tf.nn.dynamic_rnn(cell=rnn_cell,
 												inputs=net,
+												sequence_length=seq_length,
 												dtype=tf.float64,
 												scope='rnn')
 
-		net = extract_last_output(outputs)
-		net = slim.fully_connected(net, 256, scope='fc5')
-		net = slim.fully_connected(net, 128, activation_fn=None, scope='fc6')
+		net = extract_last_output(outputs, seq_length)
+		
+		net = slim.fully_connected(net, 22, activation_fn=None, scope='fc5')
+		net = slim.fully_connected(net, 32, activation_fn=None, scope='fc6')
+		net = slim.fully_connected(net, 42, activation_fn=None, scope='fc7')
+		net = slim.fully_connected(net, 52, activation_fn=None, scope='fc8')
+		net = slim.fully_connected(net, 62, activation_fn=None, scope='fc9')
+		net = slim.fully_connected(net, 72, activation_fn=None, scope='fc10')
 
 	return net
 
 def parameter_decoder(inputs):
 	
-	net = slim.stack(inputs, slim.fully_connected, [100, 72], scope='mlp')
-	#net = tf.cast(net, tf.float64, name="final_out")
-	#print("look net")
-	#print(net)
+	net = slim.stack(inputs, slim.fully_connected, [100, cfg.CONST.orig], scope='mlp')
 	return net

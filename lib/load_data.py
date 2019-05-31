@@ -21,13 +21,12 @@ class Preprocessor():
 		self.num = self.get_num_data()
 
 		self.orig_dict = {
-			'embeddings': tf.placeholder(tf.float64, shape = [self.num, 16, 128]),
+			'embeddings': tf.placeholder(tf.float64, shape = [self.num, cfg.CONST.max_length, cfg.CONST.vec_dim]),
 			'body_params': tf.placeholder(tf.float64, shape = [self.num, cfg.CONST.orig])
 		}
 
 		dataset = tf.data.Dataset.from_tensor_slices(self.orig_dict)
 		#dataset = dataset.map(self.transform_data, num_parallel_calls=8)
-		#dataset = dataset.prefetch(buffer_size=1)
 		self.dataset = dataset.shuffle(cfg.CONST.shuffle_size)
 		self.dataset = self.dataset.batch(cfg.CONST.batch_size, drop_remainder=True)
 		self.dataset = self.dataset.repeat(cfg.CONST.max_epochs)	
@@ -37,6 +36,20 @@ class Preprocessor():
 		self.iter_init = self.iterator.make_initializer(self.dataset)
 
 		return
+
+	def load_data(self):
+		data_dict = self.get_captions()
+		self.caption_tuples = data_dict['description']
+		self.body_params = np.zeros((len(data_dict), cfg.CONST.orig), dtype=np.float64)
+
+		for i in range(len(data_dict['body_id'])):
+			idx = data_dict['body_id'][i]
+			self.body_params[i] = self.get_body_params(idx)
+
+		cp.word_to_vec(self.caption_tuples)
+		self.embeddings = cp.gen_captions(self.caption_tuples)
+		self.embeddings = np.array(self.embeddings, dtype=np.float64)
+		return self.embeddings, self.body_params
 
 	def initialise_iterator(self, session):
 		session.run(self.iter_init, feed_dict={self.orig_dict['embeddings']: self.input_dict['embeddings'],
@@ -59,49 +72,32 @@ class Preprocessor():
 			data_list.append(i)
 		return data_list
 
-	#def transform_data(self, x):
-	#	kintree = prepare_kintree()
+	def transform_data(self, x):
+		kintree = prepare_kintree()
 
-	#	smplparams_orig = x['body_params']
-	#	embedding = x['embeddings']
+		smplparams_orig = x['body_params']
+		embedding = x['embeddings']
 
-	#	smplparams = tf.reshape(smplparams_orig, tf.convert_to_tensor((cfg.CONST.orig,), dtype=tf.int32))
-		#smplparams_shape = smplparams[0:10]
-		#smplparams_pose = smplparams[10:cfg.CONST.orig]
+		smplparams_pose = tf.reshape(smplparams_orig, tf.convert_to_tensor((cfg.CONST.orig,), dtype=tf.int32))
 
-		#arr_convert = lambda x: aar_to_rotmat(x, kintree)
-		#smplparams_pose = tf.py_func(arr_convert, [smplparams], tf.float64)
-	#	smplparams = tf.zeros([0,], dtype=tf.float64)
-	#	smplparams_shape = tf.cast(smplparams_shape, tf.float64)
+		aar_convert = lambda i: aar_to_rotmat(i, kintree) 
+		smplparams_pose = tf.py_func(aar_convert, [smplparams_pose], tf.float64)
+		smplparams = tf.zeros([0,], dtype=tf.float64)
+		smplparams = tf.concat([smplparams, smplparams_pose ], 0)
 
-	#	smplparams = tf.concat([smplparams, smplparams_shape], 0)
-	#	smplparams = tf.concat([smplparams, smplparams_pose], 0)
-	#	smplparams = tf.reshape(smplparams, tf.convert_to_tensor((cfg.CONST.nz,), dtype=tf.int32))
-	#	smplparams = tf.cast(smplparams, tf.float64)
-		#if self.latent_mean is not None:
-		#	smplparams = tf.subtract(smplparams, self.latent_mean)
-		#	if False and self.latent_std is not None:
-		#		smplparams = tf.div(smplparams, self.latent_std)
+		smplparams = tf.reshape(smplparams, tf.convert_to_tensor((cfg.CONST.nz,), dtype=tf.int32))
+		smplparams = tf.cast(smplparams, tf.float64)
+		if self.latent_mean is not None:
+			smplparams = tf.subtract(smplparams, self.latent_mean)
+			if False and self.latent_std is not None:
+				smplparams = tf.div(smplparams, self.latent_std)
 				
-	#	x['embeddings'] = embedding
-	#	x['body_params'] = smplparams
-	#	return x
+		x['embeddings'] = embedding
+		x['body_params'] = smplparams
+		return x
 
 	def get_num_data(self):
 		return len(self.data_list)
-	
-	def load_data(self):
-		data_dict = self.get_captions()
-		self.caption_tuples = data_dict['description']
-		self.body_params = np.zeros((len(data_dict), cfg.CONST.orig), dtype=np.float64)
-
-		for i in range(len(data_dict['body_id'])):
-			idx = data_dict['body_id'][i]
-			self.body_params[i] = self.get_body_params(idx)
-
-		self.embeddings = cp.gen_captions(self.caption_tuples)
-		self.embeddings = np.array(self.embeddings, dtype=np.float64)
-		return self.embeddings, self.body_params
 		
 	def get_captions(self):
 		self.input_dict = open_csv(cfg.DIR.train_caption_path)
@@ -111,9 +107,6 @@ class Preprocessor():
 		tup = []
 		body_params = open_pickle(os.path.join(cfg.DIR.body_path, body_id))
 		pose_params = np.array(body_params[b'pose'], dtype=np.float64)
-		#shape_params = np.array(body_params[b'betas'], dtype=np.float64)
-		#tup = np.hstack((pose_params, shape_params))
-		#return tup
 		return pose_params
 
 

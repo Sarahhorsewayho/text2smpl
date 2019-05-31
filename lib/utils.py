@@ -1,4 +1,4 @@
-# coding: utf-8
+ # coding: utf-8
 import sys 
 import importlib
 importlib.reload(sys)
@@ -24,18 +24,21 @@ def compute_sequence_length(input_batch):
 
 	with tf.variable_scope('seq_len'):
 		used = tf.greater(input_batch, 0)
-		seq_length = tf.reduce_sum(tf.cast(used, tf.int32), reduction_indices=1)
+		interm_length = tf.reduce_sum(tf.cast(used, tf.int32), reduction_indices=2)
+		interm_used = tf.greater(interm_length, 0)
+		seq_length = tf.reduce_sum(tf.cast(interm_used, tf.int32), reduction_indices=1)
 		seq_length = tf.cast(seq_length, tf.int32)
 
 	return seq_length
 
 
-def extract_last_output(output):
+def extract_last_output(output, seq_length):
 
+        batch_size = tf.shape(output)[0]
+        max_length = tf.shape(output)[1]
         out_size = int(output.get_shape()[2])
 
-        index = tf.range(0, cfg.CONST.batch_size) * 16
+        index = tf.range(0, batch_size) * max_length + (seq_length - 1)
         flat = tf.reshape(output, [-1, out_size])
-
         relevant = tf.gather(flat, index)
         return relevant

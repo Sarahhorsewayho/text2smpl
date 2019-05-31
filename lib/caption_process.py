@@ -3,7 +3,6 @@ import numpy as np
 from lib.config import cfg
 from gensim.models.word2vec import Word2Vec
 
-VEC_DIM = 128
 
 def word2index(caption_tuples):
 
@@ -27,6 +26,21 @@ def caption2words(caption_tuples):
 	words = set(words)
 	return words
 
+def words2list(caption_tuples):
+
+	idx_list = []
+	mx_len = compute_max_length(caption_tuples)
+	word2idx, idx2word = word2index(caption_tuples)
+	for i in range(len(caption_tuples)):
+		sentence = []
+		for word in caption_tuples[i].split():
+			sentence.append(word2idx[word])
+		if len(sentence) < mx_len:
+			for j in range(len(sentence), mx_len):
+				sentence.append(0)
+		idx_list.append(np.array(sentence))
+	return idx_list
+
 def gen_captions(caption_tuples):
 
 	model = load_word2vec_model()
@@ -41,11 +55,11 @@ def gen_captions(caption_tuples):
 			if word in model:
 				caption.append(np.array(model[word]))
 			else:
-				caption.append([0] * VEC_DIM)
+				caption.append([0] * cfg.CONST.vec_dim)
 
 		if len(caption) < max_length:
 			for j in range(len(caption), max_length):
-				caption.append([0] * VEC_DIM)
+				caption.append([0] * cfg.CONST.vec_dim)
 		
 		captions_post.append(caption)
 	return captions_post
@@ -56,6 +70,7 @@ def caption2list(caption_tuples):
 	for i in range(len(caption_tuples)):
 		sentence = []
 		for word in caption_tuples[i].split():
+			#if(word != ','):
 			sentence.append(word)
 		sentences.append(sentence)
 
@@ -64,7 +79,7 @@ def caption2list(caption_tuples):
 def word_to_vec(caption_tuples):
 
 	sentences = caption2list(caption_tuples)
-	model = Word2Vec(sentences, min_count=1, size=VEC_DIM)
+	model = Word2Vec(sentences, min_count=0, size=cfg.CONST.vec_dim)
 	model.save(cfg.DIR.word2vec_model_path)
 
 def load_word2vec_model():
@@ -80,6 +95,9 @@ def compute_max_length(caption_tuples):
 			cnt = cnt + 1
 		if cnt >= max_length:
 			max_length = cnt
+
+	print("=========== max_length ==============")
+	print(max_length)
 
 	return max_length
 
