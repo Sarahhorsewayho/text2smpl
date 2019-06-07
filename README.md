@@ -15,7 +15,8 @@ future
 
 **run the test example:**
 
-cd text2smpl-master \ 
+cd text2smpl-master
+
 python main.py 
 
 And you'll find the output 3D SMPL bodies in foler "*/data/objs"
