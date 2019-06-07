@@ -14,6 +14,7 @@ easydict \
 future 
 
 **run the test example:**
+
 cd text2smpl-master \ 
 python main.py 
 
